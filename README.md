@@ -17,9 +17,11 @@ Only the selected naming source is decoded and validated. An optional TXT cannot
 
 TXT lines must be sequential and match the CUE track count. Accepted separators are `.`, `)`, `:`, `-`, `–`, `—`, and `、`, followed by at least one space. The number and separator are removed from editable titles because the track rows already show numbering. The Go server repeats the validation so a direct API request cannot bypass it.
 
-If no song list exists, Cue Splitter uses complete CUE `TITLE` fields or generated `trackNN` names. Every successful export includes a normalized UTF-8-with-BOM `tracklist.txt` in `01. Title` form. If no cover is supplied, the output contains a blank white `cover.png`.
+If no song list exists, Cue Splitter uses complete CUE `TITLE` fields or generated `trackNN` names. Every successful export includes a normalized UTF-8-with-BOM `tracklist.txt` in `01. Title` form. The supplied image is normalized once to `cover.jpg`; without one, the output uses a blank white JPEG.
 
 CUE album-level `TITLE` and `PERFORMER` values prefill editable **Album** and **Artist** fields. Exported audio receives title, track number, album, artist, and album-artist tags.
+
+The same `cover.jpg` remains beside the tracks and is embedded as the front-cover attached picture in every FLAC, MP3, and M4A track. WAV, AIFF, raw AAC, OGG, Opus, and WMA keep the compatibility sidecar because those containers do not reliably expose FFmpeg attached pictures to players.
 
 ## Development setup
 

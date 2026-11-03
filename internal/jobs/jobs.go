@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/png"
+	"image/jpeg"
 	"io"
 	"os"
 	"path/filepath"
@@ -236,7 +236,8 @@ func (m *Manager) process(item *job) {
 		item.fail(fmt.Errorf("create output directory: %w", err))
 		return
 	}
-	if err := writeCover(item.inputs.Cover, outputDir); err != nil {
+	coverPath, err := m.writeCover(item.inputs.Cover, outputDir)
+	if err != nil {
 		item.fail(err)
 		return
 	}
@@ -271,6 +272,7 @@ func (m *Manager) process(item *job) {
 				TrackNumber: index + 1,
 				TrackTotal:  len(item.tracks),
 			},
+			coverPath,
 			func(progress float64) { item.setTrack(index, "processing", progress) },
 		)
 		if err != nil {
@@ -535,15 +537,17 @@ func uniqueFilename(name, extension string, used map[string]int) string {
 	return fmt.Sprintf("%s-%d%s", name, used[key], extension)
 }
 
-func writeCover(source, outputDir string) error {
+func (m *Manager) writeCover(source, outputDir string) (string, error) {
+	destination := filepath.Join(outputDir, "cover.jpg")
 	if source != "" {
-		extension := strings.ToLower(filepath.Ext(source))
-		destination := filepath.Join(outputDir, "cover"+extension)
-		return copyFile(source, destination)
+		if err := m.processor.NormalizeCover(context.Background(), source, destination); err != nil {
+			return "", err
+		}
+		return destination, nil
 	}
-	file, err := os.Create(filepath.Join(outputDir, "cover.png"))
+	file, err := os.Create(destination)
 	if err != nil {
-		return fmt.Errorf("create blank cover: %w", err)
+		return "", fmt.Errorf("create blank cover: %w", err)
 	}
 	defer file.Close()
 	blank := image.NewRGBA(image.Rect(0, 0, 1200, 1200))
@@ -553,10 +557,10 @@ func writeCover(source, outputDir string) error {
 			blank.SetRGBA(x, y, white)
 		}
 	}
-	if err := png.Encode(file, blank); err != nil {
-		return fmt.Errorf("encode blank cover: %w", err)
+	if err := jpeg.Encode(file, blank, &jpeg.Options{Quality: 92}); err != nil {
+		return "", fmt.Errorf("encode blank cover: %w", err)
 	}
-	return nil
+	return destination, nil
 }
 
 func writeTrackList(tracks []TrackStatus, outputDir string) error {
@@ -566,23 +570,6 @@ func writeTrackList(tracks []TrackStatus, outputDir string) error {
 	}
 	if err := os.WriteFile(filepath.Join(outputDir, "tracklist.txt"), tracklist.FormatUTF8BOM(names), 0o644); err != nil {
 		return fmt.Errorf("write normalized track list: %w", err)
-	}
-	return nil
-}
-
-func copyFile(source, destination string) error {
-	input, err := os.Open(source)
-	if err != nil {
-		return fmt.Errorf("open cover: %w", err)
-	}
-	defer input.Close()
-	output, err := os.Create(destination)
-	if err != nil {
-		return fmt.Errorf("create cover output: %w", err)
-	}
-	defer output.Close()
-	if _, err := io.Copy(output, input); err != nil {
-		return fmt.Errorf("copy cover: %w", err)
 	}
 	return nil
 }

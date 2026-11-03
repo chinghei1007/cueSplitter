@@ -103,6 +103,25 @@ func TestWriteTrackList(t *testing.T) {
 	}
 }
 
+func TestWriteBlankCoverUsesCompatibilityJPEG(t *testing.T) {
+	directory := t.TempDir()
+	manager := NewManager(nil, directory)
+	path, err := manager.writeCover("", directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(path) != "cover.jpg" {
+		t.Fatalf("unexpected cover path %q", path)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) < 2 || data[0] != 0xff || data[1] != 0xd8 {
+		t.Fatal("blank cover is not a JPEG")
+	}
+}
+
 func TestCleanName(t *testing.T) {
 	if got := cleanName("../bad:name?.mp3", "fallback"); got != "bad-name-.mp3" {
 		t.Fatalf("unexpected cleaned name %q", got)

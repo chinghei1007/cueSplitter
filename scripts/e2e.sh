@@ -116,7 +116,7 @@ valid_output=$(printf '%s' "$valid_snapshot" | jq -r '.outputPath')
 test -f "$valid_output/First edited.flac"
 test -f "$valid_output/Second title.flac"
 test -f "$valid_output/Third title.flac"
-test -f "$valid_output/cover.png"
+test -f "$valid_output/cover.jpg"
 test "$(od -An -t x1 -N3 "$valid_output/tracklist.txt" | tr -d ' \n')" = "efbbbf"
 test "$(tail -c +4 "$valid_output/tracklist.txt")" = "$(printf '01. First edited\n02. Second title\n03. Third title')"
 ffprobe -v error -show_entries format_tags=title,album,artist,album_artist,track -of json "$valid_output/First edited.flac" > "$e2e_dir/tags.json"
@@ -125,6 +125,9 @@ jq -e '(.format.tags.album // .format.tags.ALBUM) == "Edited Album"' "$e2e_dir/t
 jq -e '(.format.tags.artist // .format.tags.ARTIST) == "Edited Artist"' "$e2e_dir/tags.json" >/dev/null
 jq -e '(.format.tags.album_artist // .format.tags.ALBUM_ARTIST) == "Edited Artist"' "$e2e_dir/tags.json" >/dev/null
 jq -e '((.format.tags.track // .format.tags.TRACKNUMBER) | startswith("1"))' "$e2e_dir/tags.json" >/dev/null
+ffprobe -v error -show_entries stream=index,codec_type,codec_name:stream_disposition=attached_pic -of json "$valid_output/First edited.flac" > "$e2e_dir/cover-streams.json"
+jq -e '[.streams[] | select(.codec_type == "video" and .codec_name == "mjpeg" and .disposition.attached_pic == 1)] | length == 1' "$e2e_dir/cover-streams.json" >/dev/null
+jq -e '[.streams[] | select(.codec_type == "audio")] | length == 1' "$e2e_dir/cover-streams.json" >/dev/null
 
 generated_manifest='{"trackNames":[],"nameSource":"generated","textEncoding":"auto","format":"original","bitrate":0,"destination":"project","destinationPath":"","sourceDuration":6}'
 generated_response=$(post_job "" "$generated_manifest")
@@ -154,4 +157,32 @@ shift_jis_snapshot=$(wait_job "$shift_jis_id")
 shift_jis_output=$(printf '%s' "$shift_jis_snapshot" | jq -r '.outputPath')
 test "$(tail -c +4 "$shift_jis_output/tracklist.txt")" = "$(printf '01. 第一曲\n02. 第二曲\n03. 第三曲')"
 
-printf '%s\n' 'E2E passed: selected-source validation, UTF-8, GB18030, Big5, Shift_JIS, generated names, Original export, normalized TXT, and audio metadata tags passed.'
+mp3_manifest='{"trackNames":["MP3 first","MP3 second","MP3 third"],"nameSource":"txt","textEncoding":"utf-8","albumTitle":"Cover MP3","artist":"Fixture Artist","format":"mp3","bitrate":128,"destination":"project","destinationPath":"","sourceDuration":6}'
+mp3_response=$(post_job "$e2e_dir/valid.txt" "$mp3_manifest")
+mp3_id=$(printf '%s' "$mp3_response" | jq -r '.id')
+mp3_snapshot=$(wait_job "$mp3_id")
+mp3_output=$(printf '%s' "$mp3_snapshot" | jq -r '.outputPath')
+test -f "$mp3_output/cover.jpg"
+ffprobe -v error -show_entries stream=index,codec_type,codec_name:stream_disposition=attached_pic -of json "$mp3_output/MP3 first.mp3" > "$e2e_dir/mp3-cover-streams.json"
+jq -e '[.streams[] | select(.codec_type == "video" and .codec_name == "mjpeg" and .disposition.attached_pic == 1)] | length == 1' "$e2e_dir/mp3-cover-streams.json" >/dev/null
+
+m4a_manifest='{"trackNames":["M4A first","M4A second","M4A third"],"nameSource":"txt","textEncoding":"utf-8","albumTitle":"Cover M4A","artist":"Fixture Artist","format":"m4a","bitrate":128,"destination":"project","destinationPath":"","sourceDuration":6}'
+m4a_response=$(post_job "$e2e_dir/valid.txt" "$m4a_manifest")
+m4a_id=$(printf '%s' "$m4a_response" | jq -r '.id')
+m4a_snapshot=$(wait_job "$m4a_id")
+m4a_output=$(printf '%s' "$m4a_snapshot" | jq -r '.outputPath')
+test -f "$m4a_output/cover.jpg"
+ffprobe -v error -show_entries stream=index,codec_type,codec_name:stream_disposition=attached_pic -of json "$m4a_output/M4A first.m4a" > "$e2e_dir/m4a-cover-streams.json"
+jq -e '[.streams[] | select(.codec_type == "video" and .codec_name == "mjpeg" and .disposition.attached_pic == 1)] | length == 1' "$e2e_dir/m4a-cover-streams.json" >/dev/null
+
+wav_manifest='{"trackNames":["WAV first","WAV second","WAV third"],"nameSource":"txt","textEncoding":"utf-8","albumTitle":"Cover WAV","artist":"Fixture Artist","format":"wav","bitrate":0,"destination":"project","destinationPath":"","sourceDuration":6}'
+wav_response=$(post_job "$e2e_dir/valid.txt" "$wav_manifest")
+wav_id=$(printf '%s' "$wav_response" | jq -r '.id')
+wav_snapshot=$(wait_job "$wav_id")
+wav_output=$(printf '%s' "$wav_snapshot" | jq -r '.outputPath')
+test -f "$wav_output/cover.jpg"
+ffprobe -v error -show_entries stream=index,codec_type -of json "$wav_output/WAV first.wav" > "$e2e_dir/wav-streams.json"
+jq -e '[.streams[] | select(.codec_type == "audio")] | length == 1' "$e2e_dir/wav-streams.json" >/dev/null
+jq -e '[.streams[] | select(.codec_type == "video")] | length == 0' "$e2e_dir/wav-streams.json" >/dev/null
+
+printf '%s\n' 'E2E passed: encodings, metadata, cover.jpg, FLAC/MP3/M4A attached artwork, and WAV sidecar fallback passed.'

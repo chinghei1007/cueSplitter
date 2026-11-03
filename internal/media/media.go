@@ -63,6 +63,28 @@ func (p *Processor) ProbeDuration(ctx context.Context, input string) (float64, e
 	return duration, nil
 }
 
+func (p *Processor) NormalizeCover(ctx context.Context, input, output string) error {
+	command := exec.CommandContext(ctx, p.FFmpeg,
+		"-hide_banner", "-loglevel", "error", "-y",
+		"-i", input,
+		"-frames:v", "1",
+		"-vf", "scale=1600:1600:force_original_aspect_ratio=decrease",
+		"-q:v", "2",
+		"-update", "1",
+		output,
+	)
+	var stderr strings.Builder
+	command.Stderr = &stderr
+	if err := command.Run(); err != nil {
+		message := strings.TrimSpace(stderr.String())
+		if message == "" {
+			message = err.Error()
+		}
+		return fmt.Errorf("normalize cover: %s", message)
+	}
+	return nil
+}
+
 func (p *Processor) ProbeAudioInfo(ctx context.Context, input string) (AudioInfo, error) {
 	output, err := exec.CommandContext(ctx, p.FFprobe,
 		"-v", "error",
@@ -137,15 +159,24 @@ func (p *Processor) Split(
 	duration float64,
 	options ExportOptions,
 	metadata TrackMetadata,
+	cover string,
 	onProgress func(float64),
 ) error {
 	args := []string{
 		"-hide_banner", "-loglevel", "error", "-y",
 		"-i", input,
-		"-ss", formatSeconds(start),
 	}
+	embedCover := cover != "" && supportsEmbeddedCover(options.Format)
+	if embedCover {
+		args = append(args, "-i", cover)
+	}
+	args = append(args, "-ss", formatSeconds(start))
 	if duration > 0 {
 		args = append(args, "-t", formatSeconds(duration))
+	}
+	args = append(args, "-map", "0:a:0")
+	if embedCover {
+		args = append(args, "-map", "1:v:0")
 	}
 	codecArgs, err := codecArguments(options)
 	if err != nil {
@@ -153,6 +184,18 @@ func (p *Processor) Split(
 	}
 	args = append(args, codecArgs...)
 	args = append(args, metadataArguments(metadata)...)
+	if embedCover {
+		args = append(args,
+			"-c:v", "copy",
+			"-frames:v", "1",
+			"-metadata:s:v", "title=Album cover",
+			"-metadata:s:v", "comment=Cover (front)",
+			"-disposition:v:0", "attached_pic",
+		)
+		if strings.EqualFold(options.Format, "mp3") {
+			args = append(args, "-id3v2_version", "3")
+		}
+	}
 	args = append(args, "-progress", "pipe:1", "-nostats", output)
 
 	cmd := exec.CommandContext(ctx, p.FFmpeg, args...)
@@ -205,23 +248,32 @@ func metadataArguments(metadata TrackMetadata) []string {
 func codecArguments(options ExportOptions) ([]string, error) {
 	switch strings.ToLower(options.Format) {
 	case "mp3":
-		return []string{"-vn", "-c:a", "libmp3lame", "-b:a", bitrate(options.Bitrate)}, nil
+		return []string{"-c:a", "libmp3lame", "-b:a", bitrate(options.Bitrate)}, nil
 	case "flac":
-		return []string{"-vn", "-c:a", "flac"}, nil
+		return []string{"-c:a", "flac"}, nil
 	case "wav":
-		return []string{"-vn", "-c:a", "pcm_s16le"}, nil
+		return []string{"-c:a", "pcm_s16le"}, nil
 	case "m4a", "aac":
-		return []string{"-vn", "-c:a", "aac", "-b:a", bitrate(options.Bitrate)}, nil
+		return []string{"-c:a", "aac", "-b:a", bitrate(options.Bitrate)}, nil
 	case "aiff":
-		return []string{"-vn", "-c:a", "pcm_s16be"}, nil
+		return []string{"-c:a", "pcm_s16be"}, nil
 	case "ogg":
-		return []string{"-vn", "-c:a", "libvorbis", "-b:a", bitrate(options.Bitrate)}, nil
+		return []string{"-c:a", "libvorbis", "-b:a", bitrate(options.Bitrate)}, nil
 	case "opus":
-		return []string{"-vn", "-c:a", "libopus", "-b:a", bitrate(options.Bitrate)}, nil
+		return []string{"-c:a", "libopus", "-b:a", bitrate(options.Bitrate)}, nil
 	case "wma":
-		return []string{"-vn", "-c:a", "wmav2", "-b:a", bitrate(options.Bitrate)}, nil
+		return []string{"-c:a", "wmav2", "-b:a", bitrate(options.Bitrate)}, nil
 	default:
 		return nil, fmt.Errorf("unsupported export format %q", options.Format)
+	}
+}
+
+func supportsEmbeddedCover(format string) bool {
+	switch strings.ToLower(strings.TrimSpace(format)) {
+	case "flac", "mp3", "m4a":
+		return true
+	default:
+		return false
 	}
 }
 

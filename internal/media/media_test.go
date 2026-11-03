@@ -59,3 +59,16 @@ func TestMetadataArguments(t *testing.T) {
 		t.Fatalf("got %#v want %#v", got, want)
 	}
 }
+
+func TestSupportsEmbeddedCover(t *testing.T) {
+	for _, format := range []string{"flac", "mp3", "m4a"} {
+		if !supportsEmbeddedCover(format) {
+			t.Fatalf("expected embedded cover support for %s", format)
+		}
+	}
+	for _, format := range []string{"wav", "aiff", "aac", "ogg", "opus", "wma"} {
+		if supportsEmbeddedCover(format) {
+			t.Fatalf("did not expect embedded cover support for %s", format)
+		}
+	}
+}
