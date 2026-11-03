@@ -1,0 +1,12 @@
+PERFORMER "Fixture Artist"
+TITLE "Fixture Album"
+FILE "album.flac" WAVE
+  TRACK 01 AUDIO
+    TITLE "Cue First"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Cue Second"
+    INDEX 01 00:02:00
+  TRACK 03 AUDIO
+    TITLE "Cue Third"
+    INDEX 01 00:04:00

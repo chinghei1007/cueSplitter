@@ -1,0 +1,7 @@
+.DS_Store
+cue-splitter
+cue-splitter.exe
+bin/
+frontend/node_modules/
+output/
+*.log
