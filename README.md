@@ -31,6 +31,22 @@ The tools are separated in the familiar frontend/backend style:
 - `cmd/` and `internal/` contain the Go server, job manager, CUE parser, and FFmpeg runner; and
 - `web/dist/` is the frontend production build embedded by Go.
 
+### Quick start
+
+After cloning the repository, macOS and Linux users can build when needed and start the app with:
+
+```sh
+./run.sh
+```
+
+Windows users can double-click `run.cmd` or run it in Command Prompt:
+
+```bat
+run.cmd
+```
+
+The launcher installs/checks the required tools, builds the application when the platform executable is missing, and starts <http://127.0.0.1:8080>. Keep its terminal open while using Cue Splitter; press `Ctrl+C` to stop it.
+
 ### One-command setup
 
 On macOS or Linux:
