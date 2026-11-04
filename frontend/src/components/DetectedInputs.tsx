@@ -62,11 +62,6 @@ export function DetectedInputs({ preview, uploadProgress, phase, busy, albumTitl
         </label>
       </div>
       <p className="quiet-note">CUE album TITLE and PERFORMER fill these fields when available. Both remain editable and are written into the exported audio tags.</p>
-      <div className="format-note">
-        <p>Expected song-list input: one numbered line per CUE track, in order.</p>
-        <p>Example: <code>01. Song title</code> · accepted punctuation: <code>.</code> <code>)</code> <code>:</code> <code>-</code> <code>–</code> <code>—</code> <code>、</code></p>
-        <p>The number and punctuation are removed before titles appear below.</p>
-      </div>
       {preview.nameErrors.length > 0 && (
         <div className="inline-errors" role="alert">
           {preview.nameErrors.map((error) => <p key={error}>{error}</p>)}

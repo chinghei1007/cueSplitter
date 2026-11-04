@@ -94,8 +94,6 @@ code { font-family: Arial; }
 .name-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
 .name-controls label, .metadata-controls label { display: grid; gap: 6px; color: var(--muted); }
 .metadata-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
-.format-note { margin-top: 10px; border: 1px solid var(--powder-200); background: var(--powder-50); padding: 10px; color: var(--muted); }
-.format-note p + p { margin-top: 3px; }
 .inline-errors { margin-top: 10px; border: 1px solid #e7ccd0; background: #fffafb; padding: 10px; color: #9b7078; }
 .inline-errors p + p { margin-top: 3px; }
 .message-list, .result-message { margin-top: 16px; border: 1px solid var(--powder-300); background: var(--powder-50); padding: 10px; color: var(--powder-text); }
